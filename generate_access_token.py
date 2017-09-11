@@ -29,28 +29,29 @@ oauth = OAuth1Session(CONSUMER_KEY, signature_type='auth_header',
                       signature_method=SIGNATURE_RSA, rsa_key=RSA_KEY)
 request_token = oauth.fetch_request_token(REQUEST_TOKEN_URL)
 
+#save request token to get access token in last step.
+request_token_key = request_token['oauth_token'];
+request_token_secret = request_token['oauth_token_secret'];
+
+
 print("STEP 1: GET REQUEST TOKEN")
-print("  oauth_token={}".format(request_token['oauth_token']))
-print("  oauth_token_secret={}".format(request_token['oauth_token_secret']))
+print("  oauth_token={}".format(request_token))
+print("  oauth_token_secret={}".format(request_token_secret))
 print("\n")
 
 
 # Step 2: Get the end-user's authorization
-
 print("STEP2: AUTHORIZATION")
 print("  Visit to the following URL to provide authorization:")
 print("  {}?oauth_token={}".format(AUTHORIZE_URL, request_token['oauth_token']))
 print("\n")
 
-while raw_input("Press any key to continue..."):
-    pass
+raw_input("Press any key to continue...")
 
-# XXX: This is an ugly hack to get around the verfication string
-# that the server needs to supply as part of authorization response.
-# But we hard code it.
-oauth._client.client.verifier = u'verified'
+# oauth_verifier : will be avialable in response from user jira instance after approval of access token from user side
+oauth = OAuth1Session(CONSUMER_KEY, client_secret= CONSUMER_SECRET, resource_owner_key=request_token, resource_owner_secret=request_token_secret, verifier=oauth_verifier, signature_method=SIGNATURE_RSA, rsa_key=RSA_KEY)
+
 # Step 3: Get the access token
-
 access_token = oauth.fetch_access_token(ACCESS_TOKEN_URL)
 
 print("STEP2: GET ACCESS TOKEN")
@@ -59,4 +60,13 @@ print("  oauth_token_secret={}".format(access_token['oauth_token_secret']))
 print("\n")
 
 # Now you can use the access tokens with the JIRA client. Hooray!
+jira = JIRA(options={'server': JIRA_SERVER}, oauth={
+    'access_token': access_token['oauth_token'],
+    'access_token_secret': access_token['oauth_token_secret'],
+    'consumer_key': CONSUMER_KEY,
+    'key_cert': RSA_KEY
+})
 
+# print all of the project keys just as an exmaple
+for project in jira.projects():
+    print(project.key)
